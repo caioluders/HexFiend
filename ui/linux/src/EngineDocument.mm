@@ -2,6 +2,9 @@
 
 #include <algorithm>
 #include <climits>
+#include <cstdio>
+#include <fstream>
+#include <unistd.h>
 
 #import <Foundation/Foundation.h>
 #import <HexFiend/HexFiendCore.h>
@@ -116,23 +119,64 @@ bool EngineDocument::saveAs(const std::string& path) {
             return false;
         }
 
-        NSString* nsPath = [NSString stringWithUTF8String:path.c_str()];
+        const std::string targetPath = path;
+        NSString* nsPath = [NSString stringWithUTF8String:targetPath.c_str()];
         if (!nsPath) {
             error_ = "Invalid path encoding";
             return false;
         }
 
-        NSError* error = nil;
-        NSURL* url = [NSURL fileURLWithPath:nsPath];
-        BOOL ok = [(HFByteArray*)byteArray_ writeToFile:url trackingProgress:nil error:&error];
-        if (!ok) {
-            setErrorFromNSError(error, "Failed to save file");
+        std::string temporaryTemplate = targetPath + ".hexfiend-save-XXXXXX";
+        std::vector<char> temporaryPath(temporaryTemplate.begin(), temporaryTemplate.end());
+        temporaryPath.push_back('\0');
+        const int temporaryFd = mkstemp(temporaryPath.data());
+        if (temporaryFd < 0) {
+            error_ = "Failed to create temporary save file";
             return false;
         }
-        path_ = path;
-        modified_ = false;
-        error_.clear();
-        return true;
+        ::close(temporaryFd);
+        const std::string temporaryPathString = temporaryPath.data();
+        std::remove(temporaryPathString.c_str());
+
+        std::ofstream output(temporaryPathString, std::ios::binary | std::ios::trunc);
+        if (!output) {
+            std::remove(temporaryPathString.c_str());
+            error_ = "Failed to open temporary save file";
+            return false;
+        }
+
+        constexpr std::uint64_t chunkSize = 1024 * 1024;
+        const std::uint64_t documentLength = length();
+        std::vector<std::uint8_t> buffer;
+        for (std::uint64_t offset = 0; offset < documentLength; offset += chunkSize) {
+            const std::uint64_t amount = std::min<std::uint64_t>(chunkSize, documentLength - offset);
+            if (!read(offset, static_cast<std::size_t>(amount), buffer)) {
+                output.close();
+                std::remove(temporaryPathString.c_str());
+                error_ = "Failed to read document while saving";
+                return false;
+            }
+            output.write(reinterpret_cast<const char*>(buffer.data()), static_cast<std::streamsize>(buffer.size()));
+            if (!output) {
+                output.close();
+                std::remove(temporaryPathString.c_str());
+                error_ = "Failed to write temporary save file";
+                return false;
+            }
+        }
+        output.close();
+        if (!output) {
+            std::remove(temporaryPathString.c_str());
+            error_ = "Failed to finish temporary save file";
+            return false;
+        }
+        close();
+        if (std::rename(temporaryPathString.c_str(), targetPath.c_str()) != 0) {
+            std::remove(temporaryPathString.c_str());
+            error_ = "Failed to replace output file";
+            return false;
+        }
+        return open(targetPath);
     }
 }
 

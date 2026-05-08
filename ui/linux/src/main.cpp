@@ -5578,7 +5578,8 @@ int main(int argc, char** argv) {
             int bytesPerRow = static_cast<int>(view.bytesPerRow);
             ImGui::SetNextItemWidth(120.0f);
             if (ImGui::InputInt("Bytes per row", &bytesPerRow)) {
-                view.bytesPerRow = static_cast<std::uint64_t>(std::clamp(bytesPerRow, 4, 64));
+                view.bytesPerRow = static_cast<std::uint64_t>(
+                    std::clamp(bytesPerRow, static_cast<int>(kMinBytesPerRow), static_cast<int>(kMaxBytesPerRow)));
                 preferencesChanged = true;
             }
             ImGui::Separator();
