@@ -1751,7 +1751,7 @@ int hexNibble(ImWchar character) {
     return -1;
 }
 
-void clampView(hexfiend::linux_ui::EngineDocument& document, ViewState& view) {
+void clampView(hexfiend::linux_ui::EngineDocument& document, ViewState& view, bool keepSelectionVisible = true) {
     const std::uint64_t length = document.length();
     const std::uint64_t visibleRows = std::max<std::uint64_t>(1, view.visibleRows);
     const std::uint64_t bytesPerPage = view.bytesPerRow * visibleRows;
@@ -1776,7 +1776,8 @@ void clampView(hexfiend::linux_ui::EngineDocument& document, ViewState& view) {
         range.length = std::min(range.length, length - range.offset);
     }
     view.additionalSelections = normalizedRanges(view.additionalSelections);
-    if (view.selectionOffset < view.viewOffset || view.selectionOffset >= view.viewOffset + bytesPerPage) {
+    if (keepSelectionVisible &&
+        (view.selectionOffset < view.viewOffset || view.selectionOffset >= view.viewOffset + bytesPerPage)) {
         view.viewOffset = std::min((view.selectionOffset / view.bytesPerRow) * view.bytesPerRow, maxOffset);
     }
 }
@@ -2044,11 +2045,11 @@ bool drawFileBrowser(const char* id,
             const std::string label = entry.isDirectory ? "[" + entry.name + "]" : entry.name;
             if (ImGui::Selectable(label.c_str(), selected, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick)) {
                 const bool doubleClicked = ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
-                if (entry.isDirectory && (doubleClicked || !selectDirectories)) {
+                if (entry.isDirectory && doubleClicked) {
                     refreshFileBrowser(browser, entry.path);
                 } else {
                     copyToBuffer(targetBuffer, entry.path);
-                    activatedPath = doubleClicked;
+                    activatedPath = doubleClicked && (!entry.isDirectory || selectDirectories);
                 }
             }
             ImGui::TableSetColumnIndex(1);
@@ -3725,7 +3726,7 @@ void drawDocumentScroller(hexfiend::linux_ui::EngineDocument& document,
         const float relativeY = std::clamp((ImGui::GetIO().MousePos.y - origin.y) / std::max(1.0f, height), 0.0f, 1.0f);
         currentLine = static_cast<std::uint64_t>(std::llround(relativeY * static_cast<double>(maxLine)));
         view.viewOffset = currentLine * view.bytesPerRow;
-        clampView(document, view);
+        clampView(document, view, false);
     }
 
     ImDrawList* drawList = ImGui::GetWindowDrawList();
@@ -3828,7 +3829,7 @@ void drawHexRepresenters(hexfiend::linux_ui::EngineDocument& document,
     if (responsiveBytesPerRow != view.bytesPerRow) {
         view.bytesPerRow = responsiveBytesPerRow;
         view.viewOffset = (view.viewOffset / view.bytesPerRow) * view.bytesPerRow;
-        clampView(document, view);
+        clampView(document, view, false);
     }
     const float hexBaseX = canvasOrigin.x + lineNumberWidth;
     const float hexWidth = hexByteX(0.0f, hexByteWidth, hexGapWidth, static_cast<std::size_t>(view.bytesPerRow));
@@ -3853,7 +3854,7 @@ void drawHexRepresenters(hexfiend::linux_ui::EngineDocument& document,
         const long long deltaLines = -static_cast<long long>(std::llround(ImGui::GetIO().MouseWheel * 3.0f));
         const long long nextLine = std::max<long long>(0, currentLine + deltaLines);
         view.viewOffset = static_cast<std::uint64_t>(nextLine) * view.bytesPerRow;
-        clampView(document, view);
+        clampView(document, view, false);
     }
     if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
         view.multiSelectionInProgress = false;
@@ -5113,7 +5114,7 @@ int main(int argc, char** argv) {
             }
         }
 
-        if (document.isOpen()) clampView(document, view);
+        if (document.isOpen()) clampView(document, view, false);
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
@@ -5336,8 +5337,12 @@ int main(int argc, char** argv) {
             const bool submitOpen = ImGui::InputText("Path", pathBuffer.data(), pathBuffer.size(), ImGuiInputTextFlags_EnterReturnsTrue);
             const bool pickedOpenPath = drawFileBrowser("open-file-browser", openFileBrowser, pathBuffer, false);
             if (pickedOpenPath || submitOpen || ImGui::Button("Open", ImVec2(90.0f, 0.0f))) {
-                queueDocumentAction(PendingDocumentAction::OpenPath, pathBuffer.data());
-                ImGui::CloseCurrentPopup();
+                if (directoryExists(pathBuffer.data())) {
+                    refreshFileBrowser(openFileBrowser, pathBuffer.data());
+                } else {
+                    queueDocumentAction(PendingDocumentAction::OpenPath, pathBuffer.data());
+                    ImGui::CloseCurrentPopup();
+                }
             }
             ImGui::SameLine();
             if (ImGui::Button("Cancel", ImVec2(90.0f, 0.0f))) {
