@@ -2061,6 +2061,19 @@ bool drawFileBrowser(const char* id,
     return activatedPath;
 }
 
+bool handleFileBrowserAction(FileBrowserState& browser,
+                             std::array<char, kPathBufferSize>& pathBuffer,
+                             bool allowDirectories,
+                             std::string& status) {
+    if (directoryExists(pathBuffer.data())) {
+        if (allowDirectories) return true;
+        refreshFileBrowser(browser, pathBuffer.data());
+        return false;
+    }
+    status.clear();
+    return true;
+}
+
 std::string previewAt(hexfiend::linux_ui::EngineDocument& document,
                       std::uint64_t offset,
                       std::uint64_t length) {
@@ -5337,9 +5350,7 @@ int main(int argc, char** argv) {
             const bool submitOpen = ImGui::InputText("Path", pathBuffer.data(), pathBuffer.size(), ImGuiInputTextFlags_EnterReturnsTrue);
             const bool pickedOpenPath = drawFileBrowser("open-file-browser", openFileBrowser, pathBuffer, false);
             if (pickedOpenPath || submitOpen || ImGui::Button("Open", ImVec2(90.0f, 0.0f))) {
-                if (directoryExists(pathBuffer.data())) {
-                    refreshFileBrowser(openFileBrowser, pathBuffer.data());
-                } else {
+                if (handleFileBrowserAction(openFileBrowser, pathBuffer, false, status)) {
                     queueDocumentAction(PendingDocumentAction::OpenPath, pathBuffer.data());
                     ImGui::CloseCurrentPopup();
                 }
@@ -5501,7 +5512,9 @@ int main(int argc, char** argv) {
             }
             if (submitCompare || ImGui::Button("Compare", ImVec2(90.0f, 0.0f))) {
                 bool compared = false;
-                if (compareUseRange) {
+                if (!handleFileBrowserAction(compareFileBrowser, comparePathBuffer, false, status)) {
+                    compared = false;
+                } else if (compareUseRange) {
                     std::uint64_t start = 0;
                     std::uint64_t length = 0;
                     if (!parseOffset(compareStartBuffer.data(), start) || !parseOffset(compareLengthBuffer.data(), length)) {
@@ -5530,7 +5543,10 @@ int main(int argc, char** argv) {
             submitCompareFiles |= ImGui::InputText("Right", comparePathBuffer.data(), comparePathBuffer.size(), ImGuiInputTextFlags_EnterReturnsTrue);
             submitCompareFiles |= drawFileBrowser("compare-right-file-browser", compareRightFileBrowser, comparePathBuffer, false);
             if (submitCompareFiles || ImGui::Button("Compare", ImVec2(90.0f, 0.0f))) {
-                if (openFilesForComparison(document, pathBuffer, compareLeftPathBuffer, comparePathBuffer, view, history, diff, defaultEditMode, status)) {
+                const bool leftReady = handleFileBrowserAction(compareLeftFileBrowser, compareLeftPathBuffer, false, status);
+                const bool rightReady = handleFileBrowserAction(compareRightFileBrowser, comparePathBuffer, false, status);
+                if (leftReady && rightReady &&
+                    openFilesForComparison(document, pathBuffer, compareLeftPathBuffer, comparePathBuffer, view, history, diff, defaultEditMode, status)) {
                     showDiffWindow = true;
                     templateResult = {};
                     rememberOpenedFile(document.path());
@@ -5625,7 +5641,9 @@ int main(int argc, char** argv) {
             const bool submitSaveAs = ImGui::InputText("Path", pathBuffer.data(), pathBuffer.size(), ImGuiInputTextFlags_EnterReturnsTrue);
             drawFileBrowser("save-as-file-browser", saveAsFileBrowser, pathBuffer, false);
             if (submitSaveAs || ImGui::Button("Save", ImVec2(90.0f, 0.0f))) {
-                if (document.saveAs(pathBuffer.data())) {
+                if (!handleFileBrowserAction(saveAsFileBrowser, pathBuffer, false, status)) {
+                    status = "Choose a file name.";
+                } else if (document.saveAs(pathBuffer.data())) {
                     status = "Saved " + document.path();
                     rememberOpenedFile(document.path());
                     if (pendingAction != PendingDocumentAction::None) performPendingAction();
