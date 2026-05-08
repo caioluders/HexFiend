@@ -1,4 +1,5 @@
 .DS_Store
+imgui.ini
 app/HexFiend_2.xcodeproj/project.xcworkspace/*
 app/HexFiend_2.xcodeproj/xcuserdata/*
 /DerivedData

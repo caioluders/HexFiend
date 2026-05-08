@@ -30,4 +30,4 @@ This branch is the dedicated Linux rewrite line for Hex Fiend.
 
 ## Current Focus
 
-UI work is intentionally deferred. Engine extraction happens first under `core/`, with the current source manifest tracked in [core/HexFiendCoreSources.cmake](core/HexFiendCoreSources.cmake).
+The active branch focus is the Linux-native application in `ui/linux`: keep the ImGui frontend wired to `HexFiendCore`, harden Linux file/device/process workflows, and remove or isolate macOS-only pieces as they stop being useful reference code.
