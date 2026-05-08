@@ -87,7 +87,7 @@ LD_LIBRARY_PATH="$HEXFIEND_GNUSTEP_ROOT/usr/lib" \
   ctest --test-dir /tmp/hexfiend-linux-app --output-on-failure
 ```
 
-The test suite covers the portable core, the Linux UI engine bridge, and the `HexFiendLinux --self-test` path for command-line handling, preferences, editing, find/replace, diff navigation, templates, and process snapshots.
+The test suite covers the portable core, the Linux UI engine bridge, the `HexFiendLinux --self-test` path for command-line handling, preferences, editing, find/replace, diff navigation, templates, and process snapshots, plus a first-frame SDL/OpenGL/ImGui render smoke test when a display is available.
 
 ## Install And Run
 

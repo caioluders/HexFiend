@@ -4728,10 +4728,11 @@ int main(int argc, char** argv) {
     if (argc > 1 && std::strcmp(argv[1], "--self-test") == 0) {
         return runSelfTests();
     }
+    const bool renderSmokeTest = argc > 1 && std::strcmp(argv[1], "--render-smoke-test") == 0;
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
         std::fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
-        return 1;
+        return renderSmokeTest ? 77 : 1;
     }
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -4765,6 +4766,56 @@ int main(int argc, char** argv) {
 
     ImGui_ImplSDL2_InitForOpenGL(window, glContext);
     ImGui_ImplOpenGL3_Init("#version 150");
+
+    if (renderSmokeTest) {
+        configureStyle(true);
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplSDL2_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::SetNextWindowPos(ImVec2(16.0f, 16.0f), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(360.0f, 120.0f), ImGuiCond_Always);
+        ImGui::Begin("Hex Fiend Render Smoke", nullptr,
+                     ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+        ImGui::TextUnformatted("HexFiendLinux");
+        ImGui::TextUnformatted("ImGui + SDL2/OpenGL");
+        ImGui::End();
+
+        ImGui::Render();
+        int displayW = 0;
+        int displayH = 0;
+        SDL_GL_GetDrawableSize(window, &displayW, &displayH);
+        glViewport(0, 0, displayW, displayH);
+        glClearColor(0.05f, 0.06f, 0.07f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        glFlush();
+
+        bool hasMultipleColors = false;
+        if (displayW > 0 && displayH > 0) {
+            std::vector<unsigned char> pixels(static_cast<std::size_t>(displayW) * static_cast<std::size_t>(displayH) * 4);
+            glReadPixels(0, 0, displayW, displayH, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+            for (std::size_t i = 4; i + 3 < pixels.size(); i += 4) {
+                if (pixels[i] != pixels[0] || pixels[i + 1] != pixels[1] || pixels[i + 2] != pixels[2] || pixels[i + 3] != pixels[3]) {
+                    hasMultipleColors = true;
+                    break;
+                }
+            }
+        }
+
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplSDL2_Shutdown();
+        ImGui::DestroyContext();
+        SDL_GL_DeleteContext(glContext);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+
+        if (!hasMultipleColors) {
+            std::fprintf(stderr, "render smoke test produced a blank frame\n");
+            return 1;
+        }
+        return 0;
+    }
 
     hexfiend::linux_ui::EngineDocument document;
     ViewState view;
