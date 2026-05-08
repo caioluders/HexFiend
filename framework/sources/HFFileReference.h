@@ -17,7 +17,18 @@ NS_ASSUME_NONNULL_BEGIN
  
     All HFFileReferences use non-caching IO (F_NOCACHE is set).
 */
-@interface HFFileReference : NSObject
+@interface HFFileReference : NSObject {
+@protected
+    int fileDescriptor;
+    dev_t device;
+    unsigned long long inode;
+    unsigned long long fileLength;
+    mode_t fileMode;
+    BOOL isWritable;
+    uint32_t blockSize;
+    BOOL isPrivileged;
+    BOOL isFixedLength;
+}
 
 @property (readonly) BOOL isPrivileged;
 @property (readonly) BOOL isFixedLength;

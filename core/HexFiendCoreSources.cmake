@@ -1,0 +1,89 @@
+set(HEXFIEND_CORE_SOURCES
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/BTree/HFBTree.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFAnnotatedTree.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFAttributedByteArray.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFBTreeByteArray.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFByteArray.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFByteArrayProxiedData.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFByteArray_FileWriting.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFByteArray_FindReplace.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFByteRangeAttribute.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFByteRangeAttributeArray.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFByteSlice.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFByteSliceFileOperation.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFByteSliceFileOperationQueueEntry.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFFastMemchr.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFFileByteSlice.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFFileReference.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFFullMemoryByteArray.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFFullMemoryByteSlice.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFFunctions.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFObjectGraph.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFProgressTracker.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFRandomDataByteSlice.m
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFSharedMemoryByteSlice.m
+)
+
+set(HEXFIEND_CORE_HEADERS
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HexFiendCore.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFAssert.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFAttributedByteArray.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFBTreeByteArray.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFByteArray.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFByteArrayProxiedData.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFByteRangeAttribute.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFByteRangeAttributeArray.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFByteSlice.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFFastMemchr.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFFileByteSlice.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFFileReference.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFFullMemoryByteArray.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFFullMemoryByteSlice.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFFunctions.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFFrameworkPrefix.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFPrivilegedHelper.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFProgressTracker.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFRandomDataByteSlice.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFSharedMemoryByteSlice.h
+    ${CMAKE_CURRENT_LIST_DIR}/../framework/sources/HFTypes.h
+)
+
+set(HEXFIEND_APPLE_ONLY_UI_FILES
+    framework/sources/HFBinaryGlyphTable.m
+    framework/sources/HFBinaryTextRepresenter.m
+    framework/sources/HFCancelButton.h
+    framework/sources/HFCancelButton.m
+    framework/sources/HFColumnRepresenter.m
+    framework/sources/HFColumnView.h
+    framework/sources/HFColumnView.m
+    framework/sources/HFController.h
+    framework/sources/HFController.m
+    framework/sources/HFHexGlyphTable.m
+    framework/sources/HFHexPasteboardOwner.m
+    framework/sources/HFHexTextRepresenter.m
+    framework/sources/HFLayoutRepresenter.h
+    framework/sources/HFLayoutRepresenter.m
+    framework/sources/HFLineCountingRepresenter.m
+    framework/sources/HFLineCountingView.h
+    framework/sources/HFLineCountingView.m
+    framework/sources/HFPasteboardOwner.h
+    framework/sources/HFPasteboardOwner.m
+    framework/sources/HFRepresenterStringEncodingTextView.m
+    framework/sources/HFRepresenterTextLayoutManager.h
+    framework/sources/HFRepresenterTextView.h
+    framework/sources/HFRepresenterTextView.m
+    framework/sources/HFRepresenterTextViewCallout.m
+    framework/sources/HFStatusBarRepresenter.m
+    framework/sources/HFStringEncodingTextRepresenter.m
+    framework/sources/HFTextDividerRepresenter.m
+    framework/sources/HFTextField.h
+    framework/sources/HFTextField.m
+    framework/sources/HFTextRepresenter.m
+    framework/sources/HFTextRepresenter_Internal.h
+    framework/sources/HFTextSelectionPulseView.h
+    framework/sources/HFTextSelectionPulseView.m
+    framework/sources/HFTextView.h
+    framework/sources/HFTextView.m
+    framework/sources/HFVerticalScrollerRepresenter.h
+    framework/sources/HFVerticalScrollerRepresenter.m
+)

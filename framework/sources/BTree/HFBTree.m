@@ -87,8 +87,8 @@ static HFBTreeNode *mutable_copy_node(HFBTreeNode *node, TreeDepth_t depth, __st
 @interface HFBTreeNode : NSObject {
     @public
     HFBTreeIndex subtreeLength;
-    __weak HFBTreeNode *left;
-    __weak HFBTreeNode *right;
+    __unsafe_unretained HFBTreeNode *left;
+    __unsafe_unretained HFBTreeNode *right;
     DEFINE_OBJ_ARRAY(id, children);
 }
 
@@ -174,11 +174,6 @@ static HFBTreeNode *mutable_copy_node(HFBTreeNode *node, TreeDepth_t depth, __st
 @end
 
 @implementation HFBTree
-{
-    @public
-    unsigned int depth;
-    HFBTreeNode *root;
-}
 
 - (instancetype)init {
     self = [super init];

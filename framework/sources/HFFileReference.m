@@ -12,7 +12,10 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <sys/disk.h>
+#include <sys/ioctl.h>
+#ifdef __APPLE__
+    #include <sys/disk.h>
+#endif
 
 static HFPrivilegedHelperShared privilegedHelperCallback;
 
@@ -61,9 +64,11 @@ static BOOL returnUnsupportedFileTypeError(NSError **error, mode_t mode) {
     else if (S_ISSOCK(mode)) {
         fileType = @"socket";
     }
+    #ifdef S_ISWHT
     else if (S_ISWHT(mode)) {
         fileType = @"whiteout";
     }
+    #endif
     else {
         fileType = [NSString stringWithFormat:@"unknown type (mode 0x%lx)", (long)mode];
     }
@@ -103,25 +108,19 @@ static BOOL returnFTruncateError(NSError **error) {
 
 /* Modifies F_NOCACHE for a given file descriptor */
 static void HFSetFDShouldCache(int fd, BOOL shouldCache) {
+#ifdef F_NOCACHE
     int result = fcntl(fd, F_NOCACHE, !shouldCache);
     if (result == -1) {
         int err = errno;
         NSLog(@"fcntl(%d, F_NOCACHE, %d) returned error %d: %s", fd, !shouldCache, err, strerror(err));
     }
+#else
+    USE(fd);
+    USE(shouldCache);
+#endif
 }
 
-@implementation HFFileReference {
-@protected
-    int fileDescriptor;
-    dev_t device;
-    unsigned long long inode;
-    unsigned long long fileLength;
-    mode_t fileMode;
-    BOOL isWritable;
-    uint32_t blockSize;
-    BOOL isPrivileged;
-    BOOL isFixedLength;
-}
+@implementation HFFileReference
 
 @synthesize isPrivileged, isFixedLength;
 
@@ -236,6 +235,7 @@ static void HFSetFDShouldCache(int fd, BOOL shouldCache) {
     }
 
     if (isPrivileged && !sb.st_size && (S_ISCHR(sb.st_mode) || S_ISBLK(sb.st_mode))) {
+#ifdef __APPLE__
         uint64_t blockCount;
 
         if (ioctl(fileDescriptor, DKIOCGETBLOCKSIZE, &blockSize) < 0
@@ -248,6 +248,9 @@ static void HFSetFDShouldCache(int fd, BOOL shouldCache) {
         
         fileLength = blockSize * blockCount;
         isFixedLength = YES;
+#else
+        fileLength = 0;
+#endif
     }
     else {
         fileLength = sb.st_size;

@@ -190,7 +190,7 @@ static const HFRange kEntireRange = {0, ULLONG_MAX};
     NSMutableIndexSet *indexesToRemove = [[NSMutableIndexSet alloc] init];
     NSUInteger index = 0, max = [attributeRuns count];
     for (index = 0; index < max; index++) {
-        HFByteRangeAttributeRun *run = attributeRuns[index];
+        HFByteRangeAttributeRun *run = [attributeRuns objectAtIndex:index];
         if ([attributeName isEqualToString:run->name] && HFIntersectsRange(range, run->range)) {
             HFRange leftRemainder = {0, 0}, rightRemainder = {0, 0};
             if (run->range.location < range.location) {
@@ -203,7 +203,7 @@ static const HFRange kEntireRange = {0, ULLONG_MAX};
             if (leftRemainder.length || rightRemainder.length) {
                 /* Replacing existing run with remainder */
                 run = [[HFByteRangeAttributeRun alloc] initWithName:attributeName range:(leftRemainder.length ? leftRemainder : rightRemainder)];
-                attributeRuns[index] = run;
+                [attributeRuns replaceObjectAtIndex:index withObject:run];
             }
             if (leftRemainder.length && rightRemainder.length) {
                 /* We have two to insert.  The second must be the right remainder, because we inserted the left up above. */
@@ -227,7 +227,7 @@ static const HFRange kEntireRange = {0, ULLONG_MAX};
     HFASSERT(attributeName != nil);
     NSUInteger idx = [attributeRuns count];
     while (idx--) {
-        HFByteRangeAttributeRun *run = attributeRuns[idx];
+        HFByteRangeAttributeRun *run = [attributeRuns objectAtIndex:idx];
         if ([attributeName isEqualToString:run->name]) {
             [attributeRuns removeObjectAtIndex:idx];
         }
@@ -237,7 +237,7 @@ static const HFRange kEntireRange = {0, ULLONG_MAX};
 - (void)removeAttributes:(NSSet *)attributeNames {
     NSUInteger idx = [attributeRuns count];
     while (idx--) {
-        HFByteRangeAttributeRun *run = attributeRuns[idx];
+        HFByteRangeAttributeRun *run = [attributeRuns objectAtIndex:idx];
         if ([attributeNames containsObject:run->name]) {
             [attributeRuns removeObjectAtIndex:idx];
         }
@@ -362,7 +362,7 @@ static const HFRange kEntireRange = {0, ULLONG_MAX};
             /* No change */
         } else {
             HFByteRangeAttributeRun *newRun = [[HFByteRangeAttributeRun alloc] initWithName:run->name range:newRange];
-            attributeRuns[idx] = newRun;
+            [attributeRuns replaceObjectAtIndex:idx withObject:newRun];
         }
         idx++;
     }
@@ -507,16 +507,16 @@ static BOOL applyHandlerForNodesInRange(HFByteRangeAttributeArrayNode *node, HFR
 
 /* Helper function to insert a value into a set under the given key, creating it if necessary.  This could be more efficient as a CFSet because we want object identity semantics. */
 static void insertIntoDictionaryOfSets(NSMutableDictionary *dictionary, NSString *key, id value) {
-    NSMutableSet *set = dictionary[key];
+    NSMutableSet *set = [dictionary objectForKey:key];
     if (! set) {
         set = [[NSMutableSet alloc] init];
-        dictionary[key] = set;
+        [dictionary setObject:set forKey:key];
     }
     [set addObject:value];
 }
 
 static void removeFromDictionaryOfSets(NSMutableDictionary *dictionary, NSString *key, id value) {
-    NSMutableSet *set = dictionary[key];
+    NSMutableSet *set = [dictionary objectForKey:key];
     if (set) {
         [set removeObject:value];
         if (! [set count]) [dictionary removeObjectForKey:key];
@@ -564,7 +564,7 @@ static void removeFromDictionaryOfSets(NSMutableDictionary *dictionary, NSString
     }];
     
     /* We're going to remove these from the attributesToNodes set */
-    NSMutableSet *allNodesWithAttribute = attributesToNodes[attributeName];
+    NSMutableSet *allNodesWithAttribute = [attributesToNodes objectForKey:attributeName];
     
     for(HFByteRangeAttributeArrayNode *node in nodesToDelete) {
         
@@ -598,7 +598,7 @@ static void removeFromDictionaryOfSets(NSMutableDictionary *dictionary, NSString
 
 - (void)removeAttribute:(NSString *)attributeName {
     /* We can just remove everything in attributesToNodes */
-    NSMutableSet *matchingNodes = attributesToNodes[attributeName];
+    NSMutableSet *matchingNodes = [attributesToNodes objectForKey:attributeName];
     if (matchingNodes) {
         for(HFByteRangeAttributeArrayNode *node in matchingNodes) {
             [atree removeNode:node];

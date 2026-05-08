@@ -10,6 +10,7 @@
 #import <HexFiend/HFFunctions.h>
 #import <HexFiend/HFFastMemchr.h>
 #import <HexFiend/HFAssert.h>
+#include <unistd.h>
 
 //How many bytes should we read at a time when doing a find/replace?
 #define SEARCH_CHUNK_SIZE 32768
@@ -169,8 +170,10 @@ static HFRange invertRangeInRange(HFRange range, HFRange enclosingRange) {
     if (! search_with_chunks) haystack_bytes_to_allocate = ll2l(total_haystack_length);
     else {
         /* we are searching by chunks, so we will need to prepend up to needle_length bytes to handle the case where a result overlaps two chunks.  To get our base buffer page-aligned, we round needle_length up to a page size */
-        unsigned long needle_length_page_overflow = needle_length % PAGE_SIZE;
-        needle_length_rounded_up_to_page_size = needle_length + (needle_length_page_overflow ? (PAGE_SIZE - needle_length_page_overflow) : 0);
+        unsigned long pageSize = (unsigned long)sysconf(_SC_PAGESIZE);
+        if (pageSize == 0) pageSize = 4096;
+        unsigned long needle_length_page_overflow = needle_length % pageSize;
+        needle_length_rounded_up_to_page_size = needle_length + (needle_length_page_overflow ? (pageSize - needle_length_page_overflow) : 0);
         
         haystack_bytes_to_allocate = SEARCH_CHUNK_SIZE + needle_length_rounded_up_to_page_size;
     }
@@ -535,4 +538,3 @@ cancelled:
 }
 
 @end
-

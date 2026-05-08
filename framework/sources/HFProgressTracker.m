@@ -8,6 +8,9 @@
 
 #import <HexFiend/HFProgressTracker.h>
 #import <HexFiend/HFAssert.h>
+#if !defined(__APPLE__)
+    #include <stdatomic.h>
+#endif
 
 @implementation HFProgressTracker
 
@@ -19,7 +22,7 @@
     return maxProgress;
 }
 
-#if !TARGET_OS_IPHONE
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
 - (void)setProgressIndicator:(NSProgressIndicator *)indicator {
     progressIndicator = indicator;
 }
@@ -41,7 +44,7 @@
     }
     if (value != lastSetValue) {
         lastSetValue = value;
-#if !TARGET_OS_IPHONE
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
         [progressIndicator setDoubleValue:lastSetValue];
 #endif
         if (delegate && [delegate respondsToSelector:@selector(progressTracker:didChangeProgressTo:)]) {
@@ -55,11 +58,11 @@
     NSRunLoop *currentRunLoop = [NSRunLoop currentRunLoop];
     progressTimer = [NSTimer timerWithTimeInterval:1 / 30. target:self selector:@selector(_updateProgress:) userInfo:nil repeats:YES];
     [currentRunLoop addTimer:progressTimer forMode:NSDefaultRunLoopMode];
-#if !TARGET_OS_IPHONE
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
     [currentRunLoop addTimer:progressTimer forMode:NSModalPanelRunLoopMode];
 #endif
     [self _updateProgress:nil];
-#if !TARGET_OS_IPHONE
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
     [progressIndicator startAnimation:self];
 #endif
 }
@@ -68,7 +71,7 @@
     HFASSERT(progressTimer != NULL);
     [progressTimer invalidate];
     progressTimer = nil;
-#if !TARGET_OS_IPHONE
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
     [progressIndicator stopAnimation:self];
 #endif
 }
@@ -76,10 +79,14 @@
 - (void)requestCancel:(id)sender {
     USE(sender);
     cancelRequested = 1;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#if defined(__APPLE__)
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     OSMemoryBarrier();
-#pragma clang diagnostic pop
+    #pragma clang diagnostic pop
+#else
+    atomic_thread_fence(memory_order_seq_cst);
+#endif
 }
 
 - (void)dealloc {

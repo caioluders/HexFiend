@@ -21,13 +21,9 @@
 
 
 #import <TargetConditionals.h>
-#import <HexFiend/HFTypes.h>
-#import <HexFiend/HFFunctions.h>
+#import <HexFiend/HexFiendCore.h>
 #import <HexFiend/HFController.h>
 #import <HexFiend/HFRepresenter.h>
-#import <HexFiend/HFAssert.h>
-#import <HexFiend/HFFullMemoryByteArray.h>
-#import <HexFiend/HFFullMemoryByteSlice.h>
 #import <HexFiend/HFHexTextRepresenter.h>
 #import <HexFiend/HFBinaryTextRepresenter.h>
 #if !TARGET_OS_IPHONE
@@ -40,20 +36,10 @@
 #if !TARGET_OS_IPHONE
 #import <HexFiend/HFVerticalScrollerRepresenter.h>
 #endif
-#import <HexFiend/HFByteArray.h>
-#import <HexFiend/HFFileByteSlice.h>
-#import <HexFiend/HFFileReference.h>
-#import <HexFiend/HFByteArrayEditScript.h>
-#import <HexFiend/HFBTreeByteArray.h>
-#import <HexFiend/HFAttributedByteArray.h>
-#import <HexFiend/HFProgressTracker.h>
 #if !TARGET_OS_IPHONE
 #import <HexFiend/HFTextField.h>
 #import <HexFiend/HFTextView.h>
 #endif
-#import <HexFiend/HFSharedMemoryByteSlice.h>
-#import <HexFiend/HFByteRangeAttribute.h>
-#import <HexFiend/HFByteRangeAttributeArray.h>
 #import <HexFiend/HFNSStringEncoding.h>
 #import <HexFiend/HFByteTheme.h>
 #import <HexFiend/HFCustomEncoding.h>

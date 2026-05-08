@@ -1,4 +1,5 @@
 #import <HexFiend/HFFastMemchr.h>
+#include <stdint.h>
 
 #if defined(__i386__) || defined(__x86_64__)
 

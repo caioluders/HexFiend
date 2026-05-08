@@ -170,7 +170,7 @@ bail:;
     HFASSERT([self hasRemainingTargetRange]);
     REQUIRE_NOT_NULL(buffer);
     HFASSERT(length > 0);
-    const HFRange firstRange = [remainingTargetRanges[0] HFRange];
+    const HFRange firstRange = [[remainingTargetRanges objectAtIndex:0] HFRange];
     HFASSERT(HFRangeIsSubrangeOfRange(firstRange, [self targetRange]));
     unsigned long long sourceLocation = [self sourceLocationForTargetLocation:firstRange.location];
     HFByteSliceFileOperationQueueEntry *entry = [[HFByteSliceFileOperationQueueEntry alloc] init];
@@ -184,7 +184,7 @@ bail:;
     else {
         entry->length = length;
         HFRange newFirstRange = HFRangeMake(firstRange.location + length, firstRange.length - length);
-        remainingTargetRanges[0] = [HFRangeWrapper withRange:newFirstRange];
+        [remainingTargetRanges replaceObjectAtIndex:0 withObject:[HFRangeWrapper withRange:newFirstRange]];
     }
     LOG_IO NSLog(@"Read {%llu, %lu}", [self sourceLocationForTargetLocation:firstRange.location], (unsigned long)entry->length);
     [file readBytes:buffer length:entry->length from:[self sourceLocationForTargetLocation:firstRange.location]];
@@ -195,7 +195,7 @@ bail:;
 - (void)addQueueEntryWithContext:(HFByteSliceFileOperationContext *)context {
     REQUIRE_NOT_NULL(context);
     HFASSERT([self hasRemainingTargetRange]);
-    const HFRange firstRange = [remainingTargetRanges[0] HFRange];
+    const HFRange firstRange = [[remainingTargetRanges objectAtIndex:0] HFRange];
     HFASSERT(HFRangeIsSubrangeOfRange(firstRange, [self targetRange]));
     unsigned long long sourceLocation = [self sourceLocationForTargetLocation:firstRange.location];
     HFByteSliceFileOperationQueueEntry *entry = [[HFByteSliceFileOperationQueueEntry alloc] init];
@@ -213,7 +213,7 @@ bail:;
         [remainingTargetRanges removeObjectAtIndex:0];
     }
     else {
-        remainingTargetRanges[0] = [HFRangeWrapper withRange:newFirstRange];
+        [remainingTargetRanges replaceObjectAtIndex:0 withObject:[HFRangeWrapper withRange:newFirstRange]];
     }
     
     LOG_IO NSLog(@"Read {%llu, %lu}", sourceLocation, (unsigned long)entry->length);
@@ -231,7 +231,7 @@ bail:;
     NSUInteger result = 0;
     for (rangeIndex = 0; rangeIndex < rangeCount; rangeIndex++) {
         /* TODO: binary search */
-        HFRange partialTargetRange = [remainingTargetRanges[rangeIndex] HFRange];
+        HFRange partialTargetRange = [[remainingTargetRanges objectAtIndex:rangeIndex] HFRange];
         HFASSERT(HFRangeIsSubrangeOfRange(partialTargetRange, [self targetRange]));
         HFRange partialSourceRange = HFRangeMake([self sourceLocationForTargetLocation:partialTargetRange.location], partialTargetRange.length);
         HFASSERT(HFRangeIsSubrangeOfRange(partialSourceRange, [self sourceRange]));
@@ -260,7 +260,7 @@ bail:;
     for (rangeIndex = 0; rangeIndex < rangeCount; rangeIndex++) {
         if (context->progressTracker && context->progressTracker->cancelRequested) goto bail;
         /* TODO: binary search */
-        HFRange partialTargetRange = [remainingTargetRanges[rangeIndex] HFRange];
+        HFRange partialTargetRange = [[remainingTargetRanges objectAtIndex:rangeIndex] HFRange];
         HFASSERT(HFRangeIsSubrangeOfRange(partialTargetRange, [self targetRange]));
         HFRange partialSourceRange = HFRangeMake([self sourceLocationForTargetLocation:partialTargetRange.location], partialTargetRange.length);
         HFASSERT(HFRangeIsSubrangeOfRange(partialSourceRange, [self sourceRange]));
@@ -362,7 +362,7 @@ bail:;
 - (void)queueUpEntriesOverlappedByEntry:(HFByteSliceFileOperationQueueEntry *)entry withIncompleteOperations:(NSMutableArray *)incompleteOperations context:(HFByteSliceFileOperationContext *)context {
     NSUInteger incompleteOperationIndex, incompleteOperationCount = [incompleteOperations count];
     for (incompleteOperationIndex = 0; incompleteOperationIndex < incompleteOperationCount; incompleteOperationIndex++) {
-        HFByteSliceFileOperationInternal *potentialOverlap = incompleteOperations[incompleteOperationIndex];
+        HFByteSliceFileOperationInternal *potentialOverlap = [incompleteOperations objectAtIndex:incompleteOperationIndex];
         if (context->progressTracker && context->progressTracker->cancelRequested) return;
         [potentialOverlap addQueueEntriesOverlappedByEntry:entry withContext:context];
         if (! [potentialOverlap hasRemainingTargetRange]) {
@@ -390,7 +390,7 @@ bail:;
     context->queue = queue;
     
     while ([incompleteOperations count]) {
-        HFByteSliceFileOperationInternal *operation = incompleteOperations[0];
+        HFByteSliceFileOperationInternal *operation = [incompleteOperations objectAtIndex:0];
         HFASSERT([operation hasRemainingTargetRange]);
         
         CHECK_CANCEL();
@@ -400,7 +400,7 @@ bail:;
         
         while ([queue count]) {
             int err;
-            HFByteSliceFileOperationQueueEntry *entry = queue[0];
+            HFByteSliceFileOperationQueueEntry *entry = [queue objectAtIndex:0];
             CHECK_CANCEL();
             [self queueUpEntriesOverlappedByEntry:entry withIncompleteOperations:incompleteOperations context:context];
             CHECK_CANCEL();
@@ -472,4 +472,3 @@ bail:;
 }
 
 @end
-

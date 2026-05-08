@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Hex Fiend
+Comment=Fast hex editor for large files
+Exec=HexFiendLinux %F
+Icon=hexfiend
+Terminal=false
+Categories=Utility;
+MimeType=application/octet-stream;application/x-executable;application/x-sharedlib;

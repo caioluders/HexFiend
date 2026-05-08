@@ -84,6 +84,7 @@ static int hfrange_compare(const void *ap, const void *bp) {
 
 @end
 
+#if defined(__APPLE__)
 @implementation HFRangeSet
 // HFRangeSet is implemented as a CFMutableArray of uintptr_t "fenceposts". The array
 // is even in length, sorted, duplicate free, and considered to include the ranges
@@ -540,8 +541,23 @@ fail:
 }
 
 @end
+#endif
 
 uint8_t HFStringEncodingCharacterLength(NSStringEncoding encoding) {
+#if !defined(__APPLE__)
+    switch (encoding) {
+        case NSUnicodeStringEncoding:
+        case NSUTF16BigEndianStringEncoding:
+        case NSUTF16LittleEndianStringEncoding:
+            return 2;
+        case NSUTF32StringEncoding:
+        case NSUTF32BigEndianStringEncoding:
+        case NSUTF32LittleEndianStringEncoding:
+            return 4;
+        default:
+            return 1;
+    }
+#else
     switch (CFStringConvertNSStringEncodingToEncoding(encoding)) {
 	case kCFStringEncodingMacRoman: return 1;
 	case kCFStringEncodingWindowsLatin1: return 1;
@@ -689,6 +705,7 @@ uint8_t HFStringEncodingCharacterLength(NSStringEncoding encoding) {
             NSLog(@"Unknown string encoding %lx in %s", (long)encoding, __FUNCTION__);
             return 1;
     }    
+#endif
 }
 
 /* Converts a hexadecimal digit into a corresponding 4 bit unsigned int; returns -1 on failure.  The ... is a gcc extension. */
@@ -883,7 +900,7 @@ NSString *HFDescribeByteCountWithPrefixAndSuffix(const char *stringPrefix, unsig
     return [[NSString alloc] initWithBytesNoCopy:resultPointer length:numChars encoding:NSASCIIStringEncoding freeWhenDone:YES];
 }
 
-#if !TARGET_OS_IPHONE
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
 static CGFloat interpolateShadow(CGFloat val) {
     //A value of 1 means we are at the rightmost, and should return our max value.  By adjusting the scale, we control how quickly the shadow drops off.
     CGFloat scale = 1.4;
@@ -938,6 +955,7 @@ void HFUnregisterViewForWindowAppearanceChanges(NSView *self, BOOL appToo) {
 }
 #endif
 
+#if defined(__APPLE__)
 BOOL HFDarkModeEnabled(void) {
 #if TARGET_OS_IPHONE
     return NO;
@@ -976,3 +994,4 @@ HFColor* HFColorWithRGB(CGFloat red, CGFloat green, CGFloat blue, CGFloat alpha)
     return [NSColor colorWithCalibratedRed:red green:green blue:blue alpha:alpha];
 #endif
 }
+#endif

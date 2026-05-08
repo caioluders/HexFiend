@@ -16,7 +16,11 @@ typedef unsigned long long HFBTreeIndex;
 - (unsigned long long)length;
 @end
 
-@interface HFBTree : NSObject <NSMutableCopying, HFBTreeEntry>
+@interface HFBTree : NSObject <NSMutableCopying, HFBTreeEntry> {
+@public
+    unsigned int depth;
+    HFBTreeNode *root;
+}
 
 - (void)insertEntry:(id)entry atOffset:(HFBTreeIndex)offset;
 - (nullable id)entryContainingOffset:(HFBTreeIndex)offset beginningOffset:(HFBTreeIndex *)outBeginningOffset;

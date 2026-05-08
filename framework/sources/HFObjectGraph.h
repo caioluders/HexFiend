@@ -9,7 +9,10 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface HFObjectGraph : NSObject
+@interface HFObjectGraph : NSObject {
+@public
+    NSMapTable<id, NSMutableSet*> *graph;
+}
 
 - (void)addDependency:depend forObject:obj;
 - (nullable NSSet *)dependenciesForObject:obj;

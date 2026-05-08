@@ -15,13 +15,17 @@ typedef struct {
 } HFFPRange;
 
 #if TARGET_OS_IPHONE
-#define HFColor UIColor
-#define HFView UIView
-#define HFFont UIFont
+    #define HFColor UIColor
+    #define HFView UIView
+    #define HFFont UIFont
+#elif defined(__APPLE__)
+    #define HFColor NSColor
+    #define HFView NSView
+    #define HFFont NSFont
 #else
-#define HFColor NSColor
-#define HFView NSView
-#define HFFont NSFont
+    #define HFColor NSObject
+    #define HFView NSObject
+    #define HFFont NSObject
 #endif
 
 typedef NS_ENUM(NSInteger, HFControllerSelectAction) {

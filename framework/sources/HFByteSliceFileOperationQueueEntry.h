@@ -7,6 +7,10 @@
 
 #import <Foundation/Foundation.h>
 
+#ifndef NS_RETURNS_INNER_POINTER
+    #define NS_RETURNS_INNER_POINTER
+#endif
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface HFByteSliceFileOperationQueueEntry : NSObject {

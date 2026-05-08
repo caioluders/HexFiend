@@ -2,13 +2,21 @@
 // Prefix header for all source files of the 'HexFiend_2' target in the 'HexFiend_2' project
 //
 
-#import <TargetConditionals.h>
-#ifdef __OBJC__
-#if TARGET_OS_IPHONE
-    #import <UIKit/UIKit.h>
+#ifdef __APPLE__
+    #import <TargetConditionals.h>
 #else
-    #import <Cocoa/Cocoa.h>
+    #ifndef TARGET_OS_IPHONE
+        #define TARGET_OS_IPHONE 0
+    #endif
 #endif
+#ifdef __OBJC__
+    #if defined(__APPLE__) && TARGET_OS_IPHONE
+        #import <UIKit/UIKit.h>
+    #elif defined(__APPLE__)
+        #import <Cocoa/Cocoa.h>
+    #else
+        #import <Foundation/Foundation.h>
+    #endif
     #import <HexFiend/HFTypes.h>
 #endif
 

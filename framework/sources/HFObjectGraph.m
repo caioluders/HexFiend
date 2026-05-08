@@ -6,14 +6,13 @@
 //
 
 #import "HFObjectGraph.h"
-#import "HFTest.h"
+#if HFUNIT_TESTS
+    #import "HFTest.h"
+#endif
 #import <HexFiend/HFFrameworkPrefix.h>
 #import <HexFiend/HFAssert.h>
 
 @implementation HFObjectGraph
-{
-    NSMapTable<id, NSMutableSet*> *graph;
-}
 
 - (instancetype)init {
     if ((self = [super init]) != nil) {
@@ -47,36 +46,41 @@
     return [graph objectForKey:obj];
 }
 
-static void tarjan(HFObjectGraph *self, id node, CFMutableDictionaryRef vIndexes, CFMutableDictionaryRef vLowlinks, NSMutableArray *stack, NSUInteger *index, id givenDependencies/*NSSet or NSArray*/, NSMutableArray *resultStronglyConnectedComponents) {
+static NSNumber *HFObjectGraphNumberForIndex(NSUInteger index) {
+    return [NSNumber numberWithUnsignedInteger:index];
+}
+
+static void tarjan(HFObjectGraph *self, id node, NSMapTable *vIndexes, NSMapTable *vLowlinks, NSMutableArray *stack, NSUInteger *index, id givenDependencies/*NSSet or NSArray*/, NSMutableArray *resultStronglyConnectedComponents) {
     NSUInteger vLowlink = *index;
-    CFDictionarySetValue(vIndexes, (const void *)node, (void *)*index);
-    CFDictionarySetValue(vLowlinks, (const void *)node, (void *)vLowlink);
+    [vIndexes setObject:HFObjectGraphNumberForIndex(*index) forKey:node];
+    [vLowlinks setObject:HFObjectGraphNumberForIndex(vLowlink) forKey:node];
     ++*index;
     [stack addObject:node];
     
     id dependencies = (givenDependencies ? givenDependencies : [self dependenciesForObject:node]);
     for(id successor in dependencies) {
-        NSUInteger successorIndex = -1;
-        BOOL successorIndexIsDefined = CFDictionaryGetValueIfPresent(vIndexes, (const void *)successor, (const void **)&successorIndex);
+        NSNumber *successorIndexNumber = [vIndexes objectForKey:successor];
+        NSUInteger successorIndex = [successorIndexNumber unsignedIntegerValue];
+        BOOL successorIndexIsDefined = (successorIndexNumber != nil);
         if (! successorIndexIsDefined) {
             tarjan(self, successor, vIndexes, vLowlinks, stack, index, NULL, resultStronglyConnectedComponents);
-            HFASSERT(CFDictionaryContainsKey(vLowlinks, (const void *)node) && CFDictionaryContainsKey(vLowlinks, (const void *)successor));
-            NSUInteger possibleNewLowlink = (NSUInteger)CFDictionaryGetValue(vLowlinks, (const void *)successor);
+            HFASSERT([vLowlinks objectForKey:node] && [vLowlinks objectForKey:successor]);
+            NSUInteger possibleNewLowlink = [[vLowlinks objectForKey:successor] unsignedIntegerValue];
             if (possibleNewLowlink < vLowlink) {
                 vLowlink = possibleNewLowlink;
-                CFDictionarySetValue(vLowlinks, (const void *)node, (void *)vLowlink);
+                [vLowlinks setObject:HFObjectGraphNumberForIndex(vLowlink) forKey:node];
             }
         }
         else if ([stack indexOfObjectIdenticalTo:successor] != NSNotFound) {
             if (successorIndex < vLowlink) {
                 vLowlink = successorIndex;
-                CFDictionarySetValue(vLowlinks, (const void *)node, (void *)vLowlink);
+                [vLowlinks setObject:HFObjectGraphNumberForIndex(vLowlink) forKey:node];
             }
         }
     }
     
-    HFASSERT(vLowlink == (NSUInteger)CFDictionaryGetValue(vLowlinks, (const void *)node));
-    if (vLowlink == (NSUInteger)CFDictionaryGetValue(vIndexes, (const void *)node)) {
+    HFASSERT(vLowlink == [[vLowlinks objectForKey:node] unsignedIntegerValue]);
+    if (vLowlink == [[vIndexes objectForKey:node] unsignedIntegerValue]) {
         NSMutableArray *component = [[NSMutableArray alloc] init];
         id someNode;
         do {
@@ -92,17 +96,14 @@ static void tarjan(HFObjectGraph *self, id node, CFMutableDictionaryRef vIndexes
     NSMutableArray *result = [NSMutableArray array];
     NSUInteger index = 0;
     NSMutableArray *stack = [[NSMutableArray alloc] init];
-    CFMutableDictionaryRef vIndexes = CFDictionaryCreateMutable(NULL, 0, NULL, NULL);
-    CFMutableDictionaryRef vLowlinks = CFDictionaryCreateMutable(NULL, 0, NULL, NULL);
+    NSMapTable *vIndexes = [NSMapTable strongToStrongObjectsMapTable];
+    NSMapTable *vLowlinks = [NSMapTable strongToStrongObjectsMapTable];
     NSString *magicStartNode = [[NSString alloc] initWithCString:"Magic Start Node" encoding:NSASCIIStringEncoding];
     tarjan(self, magicStartNode, vIndexes, vLowlinks, stack, &index, objects, result);
     
     /* Remove the one array containing magicStartNode */
-    HFASSERT([[result lastObject] count] == 1 && [result lastObject][0] == magicStartNode);
+    HFASSERT([[result lastObject] count] == 1 && [[result lastObject] objectAtIndex:0] == magicStartNode);
     [result removeLastObject];
-    
-    CFRelease(vIndexes);
-    CFRelease(vLowlinks);
     return result;
 }
 

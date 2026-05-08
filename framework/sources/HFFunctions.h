@@ -2,7 +2,11 @@
 
 #import <HexFiend/HFFrameworkPrefix.h>
 #import <HexFiend/HFTypes.h>
-#import <libkern/OSAtomic.h>
+#ifdef __APPLE__
+    #import <libkern/OSAtomic.h>
+#else
+    #include <stdatomic.h>
+#endif
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -334,10 +338,9 @@ static inline CGFloat HFCopysign(CGFloat a, CGFloat b) {
 #endif
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 /*! Atomically increments an NSUInteger, returning the new value.  Optionally invokes a memory barrier. */
 static inline NSUInteger HFAtomicIncrement(volatile NSUInteger *ptr, BOOL barrier) {
+#ifdef __APPLE__
     return _Generic(ptr,
         volatile unsigned *:           (barrier ? OSAtomicIncrement32Barrier : OSAtomicIncrement32)((volatile int32_t *)ptr),
 #if ULONG_MAX == UINT32_MAX
@@ -346,10 +349,15 @@ static inline NSUInteger HFAtomicIncrement(volatile NSUInteger *ptr, BOOL barrie
         volatile unsigned long *:      (barrier ? OSAtomicIncrement64Barrier : OSAtomicIncrement64)((volatile int64_t *)ptr),
 #endif
         volatile unsigned long long *: (barrier ? OSAtomicIncrement64Barrier : OSAtomicIncrement64)((volatile int64_t *)ptr));
+#else
+    memory_order order = barrier ? memory_order_seq_cst : memory_order_relaxed;
+    return atomic_fetch_add_explicit((_Atomic NSUInteger *)ptr, 1, order) + 1;
+#endif
 }
 
 /*! Atomically decrements an NSUInteger, returning the new value.  Optionally invokes a memory barrier. */
 static inline NSUInteger HFAtomicDecrement(volatile NSUInteger *ptr, BOOL barrier) {
+#ifdef __APPLE__
     return _Generic(ptr,
         volatile unsigned *:           (barrier ? OSAtomicDecrement32Barrier : OSAtomicDecrement32)((volatile int32_t *)ptr),
 #if ULONG_MAX == UINT32_MAX
@@ -358,13 +366,20 @@ static inline NSUInteger HFAtomicDecrement(volatile NSUInteger *ptr, BOOL barrie
         volatile unsigned long *:      (barrier ? OSAtomicDecrement64Barrier : OSAtomicDecrement64)((volatile int64_t *)ptr),
 #endif
         volatile unsigned long long *: (barrier ? OSAtomicDecrement64Barrier : OSAtomicDecrement64)((volatile int64_t *)ptr));
+#else
+    memory_order order = barrier ? memory_order_seq_cst : memory_order_relaxed;
+    return atomic_fetch_sub_explicit((_Atomic NSUInteger *)ptr, 1, order) - 1;
+#endif
 }
 
 /* Function for OSAtomicAdd64 that just does a non-atomic add on PowerPC.  This should not be used where atomicity is critical; an example where this is used is updating a progress bar. */
 static inline int64_t HFAtomicAdd64(int64_t a, volatile int64_t *b) {
+#ifdef __APPLE__
     return OSAtomicAdd64(a, b);
+#else
+    return atomic_fetch_add_explicit((_Atomic int64_t *)b, a, memory_order_relaxed) + a;
+#endif
 }
-#pragma clang diagnostic pop
 
 /*! Converts a long double to unsigned long long.  Assumes that val is already an integer - use floorl or ceill */
 static inline unsigned long long HFFPToUL(long double val) {
@@ -382,10 +397,12 @@ static inline long double HFULToFP(unsigned long long val) {
     return result;
 }
 
+#if defined(__APPLE__)
 /*! Convenience to return information about a CGAffineTransform for logging. */
 static inline NSString *HFDescribeAffineTransform(CGAffineTransform t) {
     return [NSString stringWithFormat:@"%f %f 0\n%f %f 0\n%f %f 1", t.a, t.b, t.c, t.d, t.tx, t.ty];
 }
+#endif
 
 /*! Returns 1 + floor(log base 10 of val).  If val is 0, returns 1. */
 static inline NSUInteger HFCountDigitsBase10(unsigned long long val) {
@@ -453,7 +470,7 @@ static inline NSUInteger HFDivideULRoundingUp(NSUInteger a, NSUInteger b) {
     else return ((a - 1) / b) + 1;
 }
 
-#if !TARGET_OS_IPHONE
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
 /*! Draws a shadow. */
 void HFDrawShadow(CGContextRef context, NSRect rect, CGFloat size, NSRectEdge rectEdge, BOOL active, NSRect clip);
 
@@ -501,6 +518,7 @@ NSString *HFDescribeByteCountWithPrefixAndSuffix(const char *_Nullable stringPre
  
  TODO: HFRangeSet needs to be tested! I guarantee it has bugs! (Which doesn't matter right now because it's all dead code...)
  */
+#if defined(__APPLE__)
 @interface HFRangeSet : NSObject <NSCopying, NSSecureCoding> {
     @private
     CFMutableArrayRef array;
@@ -545,13 +563,16 @@ NSString *HFDescribeByteCountWithPrefixAndSuffix(const char *_Nullable stringPre
 - (void)assertIntegrity;
 
 @end
+#endif
 
+#if defined(__APPLE__)
 BOOL HFDarkModeEnabled(void);
 
 CGContextRef HFGraphicsGetCurrentContext(void);
 
 HFColor* HFColorWithWhite(CGFloat white, CGFloat alpha);
 HFColor* HFColorWithRGB(CGFloat red, CGFloat green, CGFloat blue, CGFloat alpha);
+#endif
 
 /* Returns an NSData from an NSString containing hexadecimal characters.  Characters that are not hexadecimal digits are silently skipped.  Returns by reference whether the last byte contains only one nybble, in which case it will be returned in the low 4 bits of the last byte. */
 NSData *HFDataFromHexString(NSString *string, BOOL *_Nullable isMissingLastNybble);
@@ -559,7 +580,7 @@ NSData *HFDataFromHexString(NSString *string, BOOL *_Nullable isMissingLastNybbl
 NSString *HFHexStringFromData(NSData *data, BOOL includePrefix);
 
 /* Helper for Swift to catch exceptions from Objective-C */
-NS_INLINE NSException * _Nullable HFTry(dispatch_block_t block) {
+NS_INLINE NSException * _Nullable HFTry(void (^block)(void)) {
     @try {
         block();
     } @catch (NSException *exception) {

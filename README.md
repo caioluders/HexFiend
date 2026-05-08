@@ -1,21 +1,110 @@
-<img align="right" src="docs/screenshot.png?raw=true">
+<img align="right" width="420" src="docs/linux-screenshot.png?raw=true">
 
-# Hex Fiend
+# Hex Fiend for Linux
 
-A fast and clever open source hex editor for macOS.
+This fork is focused on a native Linux rewrite of Hex Fiend. The app now builds a portable `HexFiendCore` engine and an ImGui + SDL2/OpenGL frontend named `HexFiendLinux`.
 
-Download the latest version from the [releases](https://github.com/ridiculousfish/HexFiend/releases) page.
+The original Hex Fiend project is a fast macOS hex editor. This branch keeps that engine-driven editing model, but the repository direction here is Linux-first: a C++/ImGui UI, Linux packaging, Linux file/device/process adapters, and a workflow that can be built and tested on a normal Linux workstation.
 
-![CI](https://github.com/ridiculousfish/HexFiend/workflows/CI/badge.svg)
+## Current Linux App
 
-## Features
+`HexFiendLinux` currently supports:
 
-- **Insert, delete, rearrange.**  Hex Fiend does not limit you to in-place changes like some hex editors.
-- **Work with huge files.**  Hex Fiend can handle as big a file as you’re able to create.  It’s been tested on files as large as 118 GB.
-- **Small footprint.**  Hex Fiend does not keep your files in memory.  You won’t dread launching or working with Hex Fiend even on low-RAM machines.
-- **Fast.**  Open a huge file, scroll around, copy and paste, all instantly.  Find what you’re looking for with fast searching.
-- **Binary diff.**  Hex Fiend can show the differences between files, taking into account insertions or deletions. Simply open two files in Hex Fiend and then use the File > Compare menus.
-- **Smart saving.**  Hex Fiend knows not to waste time overwriting the parts of your files that haven’t changed, and never needs temporary disk space.
-- **Data inspector.**  Interpret data as integer or floating point, signed or unsigned, big or little endian.
-- **Binary templates.**  Visualize the structure of a file through scripting. See [documentation](https://github.com/ridiculousfish/HexFiend/tree/master/templates).
-- **Embeddable!**  It’s really easy to incorporate Hex Fiend’s hex or data views into your app using the Hex Fiend framework.  Its permissive BSD-style license won’t burden you. See the [API reference](http://ridiculousfish.com/hexfiend/docs/) for details. Check out the [projects using Hex Fiend](https://github.com/HexFiend/HexFiend/blob/master/docs/ProjectsUsingHexFiend.md).
+- Opening, editing, saving, reverting, and drag-dropping files through `HexFiendCore`.
+- Hex and text representers with caret placement, range selection, multi-range selection, line numbers, column headers, and a scroller.
+- Insert, overwrite, and read-only modes with undo/redo, cut/copy/paste, paste-as-hex, paste-as-text, and save-as.
+- Engine-backed find/replace, jump-to-offset, and status bar selection reporting.
+- Endian-aware data inspector values including integers, floats, UTF-8 preview, and LEB128.
+- File comparison with insertion-aware diff ranges, diff navigation, range compare, standalone two-file compare, and copyable diff summaries.
+- Linux drive opening in read-only mode.
+- Process memory region snapshots from `/proc/<pid>/mem`, including process/region filtering and manual snapshot refresh.
+- Tcl-backed binary templates for the common Hex Fiend template commands, installed template discovery, includes, sections, and collapsed sections.
+- Light/dark theme preferences, recent files, empty-state actions, desktop file, icon, and bundled templates.
+- macOS-compatible command-line flags for open file, diff files, and open base64 data, plus `--compare`.
+
+Known gaps are mostly release polish and macOS parity:
+
+- The Linux diff view is functional but simpler than the macOS UI.
+- Template support covers the common scripting surface, not every macOS template command.
+- Process memory support is snapshot-based, not a live editable memory document.
+- More manual GUI testing is still needed across desktop environments, DPI settings, and distributions.
+
+## Build On Linux
+
+The build expects Clang, CMake, SDL2, OpenGL, pkg-config, Tcl, zlib, and a GNUstep Foundation runtime. ImGui is fetched by CMake during configure.
+
+On Arch Linux:
+
+```sh
+sudo pacman -S --needed base-devel clang cmake git pkgconf sdl2 libglvnd gnustep-base tcl zlib
+```
+
+The repo includes a helper that stages the GNUstep runtime into `/tmp/hexfiend-gnustep/root` without requiring system-wide GNUstep changes:
+
+```sh
+scripts/stage-arch-gnustep.sh
+```
+
+Configure and build:
+
+```sh
+export HEXFIEND_GNUSTEP_ROOT=/tmp/hexfiend-gnustep/root
+
+cmake -S . -B /tmp/hexfiend-linux-app \
+  -DCMAKE_OBJC_COMPILER=/usr/bin/clang \
+  -DCMAKE_OBJCXX_COMPILER=/usr/bin/clang++ \
+  -DBUILD_TESTING=ON
+
+cmake --build /tmp/hexfiend-linux-app -j2
+```
+
+Run the tests:
+
+```sh
+LD_LIBRARY_PATH="$HEXFIEND_GNUSTEP_ROOT/usr/lib" \
+  ctest --test-dir /tmp/hexfiend-linux-app --output-on-failure
+```
+
+The test suite covers the portable core, the Linux UI engine bridge, and the `HexFiendLinux --self-test` path for command-line handling, preferences, editing, find/replace, diff navigation, templates, and process snapshots.
+
+## Install And Run
+
+Install the app, desktop launcher, icon, and bundled templates:
+
+```sh
+cmake --install /tmp/hexfiend-linux-app --prefix "$HOME/.local"
+```
+
+This installs:
+
+- `HexFiendLinux` into `$HOME/.local/bin`
+- the desktop entry into `$HOME/.local/share/applications`
+- the icon into `$HOME/.local/share/pixmaps`
+- bundled templates into `$HOME/.local/share/hexfiend/templates`
+
+The installed app finds bundled templates relative to its own executable, so custom install prefixes work without setting `HEXFIEND_TEMPLATE_PATH`.
+
+Launch from the build tree:
+
+```sh
+scripts/run-linux-app.sh
+```
+
+Open a file directly:
+
+```sh
+scripts/run-linux-app.sh /path/to/file
+```
+
+The built executable is `/tmp/hexfiend-linux-app/ui/linux/HexFiendLinux` by default. Set `HEXFIEND_BUILD_DIR` if you configured CMake into another build directory.
+
+## Repository Layout
+
+- [core/README.md](/home/g3ol4d0/Desktop/tmp/HexFiend/core/README.md) describes the portable engine.
+- [platform/linux/README.md](/home/g3ol4d0/Desktop/tmp/HexFiend/platform/linux/README.md) describes Linux adapters.
+- [ui/README.md](/home/g3ol4d0/Desktop/tmp/HexFiend/ui/README.md) describes the Linux-native frontend.
+- [REWRITE.md](/home/g3ol4d0/Desktop/tmp/HexFiend/REWRITE.md) records branch rules and migration order.
+
+## Upstream
+
+Hex Fiend originated as a macOS hex editor by ridiculous_fish. This fork is carrying the Linux-native rewrite; upstream macOS documentation and release history remain useful for behavioral reference.

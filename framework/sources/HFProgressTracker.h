@@ -34,7 +34,7 @@ NS_ASSUME_NONNULL_BEGIN
     volatile int cancelRequested;
     @private
     unsigned long long maxProgress;
-#if !TARGET_OS_IPHONE
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
     NSProgressIndicator *progressIndicator;
 #endif
     NSTimer *progressTimer;
@@ -52,7 +52,7 @@ NS_ASSUME_NONNULL_BEGIN
 */
 @property (nonatomic, copy) NSDictionary *userInfo;
 
-#if !TARGET_OS_IPHONE
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
 /*!
   The progressIndicator property allows an NSProgressIndicator to be associated with the HFProgressTracker.  The progress indicator should have values in the range 0 to 1, and it will be updated with the fraction currentProgress / maxProgress.
 */
