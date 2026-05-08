@@ -26,7 +26,7 @@ The built binary is `/tmp/hexfiend-linux-app/ui/linux/HexFiendLinux`. When runni
 LD_LIBRARY_PATH=/tmp/hexfiend-gnustep/root/usr/lib /tmp/hexfiend-linux-app/ui/linux/HexFiendLinux
 ```
 
-The latest preview release is available at [linux-preview-4e47d8e](https://github.com/caioluders/HexFiend/releases/tag/linux-preview-4e47d8e).
+Preview builds are available on the [GitHub releases page](https://github.com/caioluders/HexFiend/releases).
 
 ## Current Linux App
 
@@ -122,10 +122,10 @@ The built executable is `/tmp/hexfiend-linux-app/ui/linux/HexFiendLinux` by defa
 
 ## Repository Layout
 
-- [core/README.md](/home/g3ol4d0/Desktop/tmp/HexFiend/core/README.md) describes the portable engine.
-- [platform/linux/README.md](/home/g3ol4d0/Desktop/tmp/HexFiend/platform/linux/README.md) describes Linux adapters.
-- [ui/README.md](/home/g3ol4d0/Desktop/tmp/HexFiend/ui/README.md) describes the Linux-native frontend.
-- [REWRITE.md](/home/g3ol4d0/Desktop/tmp/HexFiend/REWRITE.md) records branch rules and migration order.
+- [core/README.md](core/README.md) describes the portable engine.
+- [platform/linux/README.md](platform/linux/README.md) describes Linux adapters.
+- [ui/README.md](ui/README.md) describes the Linux-native frontend.
+- [REWRITE.md](REWRITE.md) records branch rules and migration order.
 
 ## Upstream
 

@@ -6,9 +6,9 @@ Until extraction is complete, the first portable target is still sourced from `f
 
 Build ownership now lives here:
 
-- [CMakeLists.txt](/home/g3ol4d0/Desktop/tmp/HexFiend/core/CMakeLists.txt)
-- [HexFiendCoreSources.cmake](/home/g3ol4d0/Desktop/tmp/HexFiend/core/HexFiendCoreSources.cmake)
-- [MIGRATION.md](/home/g3ol4d0/Desktop/tmp/HexFiend/core/MIGRATION.md)
+- [CMakeLists.txt](CMakeLists.txt)
+- [HexFiendCoreSources.cmake](HexFiendCoreSources.cmake)
+- [MIGRATION.md](MIGRATION.md)
 
 On Arch Linux without system GNUstep packages, stage the runtime locally first:
 

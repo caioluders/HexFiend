@@ -30,4 +30,4 @@ This branch is the dedicated Linux rewrite line for Hex Fiend.
 
 ## Current Focus
 
-UI work is intentionally deferred. Engine extraction happens first under `core/`, with the current source manifest tracked in [core/HexFiendCoreSources.cmake](/home/g3ol4d0/Desktop/tmp/HexFiend/core/HexFiendCoreSources.cmake).
+UI work is intentionally deferred. Engine extraction happens first under `core/`, with the current source manifest tracked in [core/HexFiendCoreSources.cmake](core/HexFiendCoreSources.cmake).
