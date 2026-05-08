@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <sys/stat.h>
 #include <vector>
 
 namespace {
@@ -74,6 +75,7 @@ int main() {
     if (!expect(saved == expected, "saved bytes mismatch")) return 1;
 
     if (!expect(document.open(inputPath), document.error().c_str())) return 1;
+    if (!expect(chmod(inputPath.c_str(), 0600) == 0, "failed to prepare input permissions")) return 1;
     if (!expect(document.replace(4, 5, std::vector<unsigned char>{0x43, 0x6F, 0x72, 0x65}), document.error().c_str())) return 1;
     if (!expect(document.save(), document.error().c_str())) return 1;
     if (!expect(!document.isModified(), "in-place save should clear modified state")) return 1;
@@ -84,6 +86,9 @@ int main() {
         0x20, 0x4C, 0x69, 0x6E, 0x75, 0x78
     };
     if (!expect(inPlaceSaved == inPlaceExpected, "in-place saved bytes mismatch")) return 1;
+    struct stat inPlaceSavedInfo {};
+    if (!expect(stat(inputPath.c_str(), &inPlaceSavedInfo) == 0, "failed to stat in-place saved file")) return 1;
+    if (!expect((inPlaceSavedInfo.st_mode & 0777) == 0600, "in-place save did not preserve file permissions")) return 1;
     if (!expect(document.read(0, static_cast<std::size_t>(document.length()), bytes), "in-place read failed")) return 1;
     if (!expect(bytes == inPlaceExpected, "in-place document bytes mismatch")) return 1;
 

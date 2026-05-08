@@ -1,9 +1,12 @@
 #include "EngineDocument.hpp"
 
 #include <algorithm>
+#include <cerrno>
 #include <climits>
 #include <cstdio>
+#include <cstring>
 #include <fstream>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #import <Foundation/Foundation.h>
@@ -126,6 +129,9 @@ bool EngineDocument::saveAs(const std::string& path) {
             return false;
         }
 
+        struct stat existingInfo {};
+        const bool hadExistingFile = stat(targetPath.c_str(), &existingInfo) == 0;
+        const mode_t existingMode = existingInfo.st_mode & 0777;
         std::string temporaryTemplate = targetPath + ".hexfiend-save-XXXXXX";
         std::vector<char> temporaryPath(temporaryTemplate.begin(), temporaryTemplate.end());
         temporaryPath.push_back('\0');
@@ -170,10 +176,14 @@ bool EngineDocument::saveAs(const std::string& path) {
             error_ = "Failed to finish temporary save file";
             return false;
         }
-        close();
+        if (hadExistingFile && chmod(temporaryPathString.c_str(), existingMode) != 0) {
+            std::remove(temporaryPathString.c_str());
+            error_ = std::string("Failed to preserve output file permissions: ") + std::strerror(errno);
+            return false;
+        }
         if (std::rename(temporaryPathString.c_str(), targetPath.c_str()) != 0) {
             std::remove(temporaryPathString.c_str());
-            error_ = "Failed to replace output file";
+            error_ = std::string("Failed to replace output file: ") + std::strerror(errno);
             return false;
         }
         return open(targetPath);
