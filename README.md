@@ -6,6 +6,28 @@ This fork is focused on a native Linux rewrite of Hex Fiend. The app now builds 
 
 The original Hex Fiend project is a fast macOS hex editor. This branch keeps that engine-driven editing model, but the repository direction here is Linux-first: a C++/ImGui UI, Linux packaging, Linux file/device/process adapters, and a workflow that can be built and tested on a normal Linux workstation.
 
+## Quick Run
+
+From this workspace, run the current local build with:
+
+```sh
+scripts/run-linux-app.sh
+```
+
+Open a file directly:
+
+```sh
+scripts/run-linux-app.sh /path/to/file
+```
+
+The built binary is `/tmp/hexfiend-linux-app/ui/linux/HexFiendLinux`. When running it directly, set the staged GNUstep runtime path:
+
+```sh
+LD_LIBRARY_PATH=/tmp/hexfiend-gnustep/root/usr/lib /tmp/hexfiend-linux-app/ui/linux/HexFiendLinux
+```
+
+The latest preview release is available at [linux-preview-4e47d8e](https://github.com/caioluders/HexFiend/releases/tag/linux-preview-4e47d8e).
+
 ## Current Linux App
 
 `HexFiendLinux` currently supports:
