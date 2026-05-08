@@ -2015,6 +2015,25 @@ void showCompareWithFile(const ViewState& view,
     showCompareDialog = true;
 }
 
+bool activateFileBrowserEntry(FileBrowserState& browser,
+                              const FileBrowserEntry& entry,
+                              std::array<char, kPathBufferSize>& targetBuffer,
+                              bool selectDirectories,
+                              bool doubleClicked) {
+    const std::string entryPath = entry.path;
+    if (entry.isDirectory && !selectDirectories) {
+        refreshFileBrowser(browser, entryPath);
+        return false;
+    }
+    if (entry.isDirectory && doubleClicked) {
+        refreshFileBrowser(browser, entryPath);
+        return false;
+    }
+
+    copyToBuffer(targetBuffer, entryPath);
+    return doubleClicked && (!entry.isDirectory || selectDirectories);
+}
+
 bool drawFileBrowser(const char* id,
                      FileBrowserState& browser,
                      std::array<char, kPathBufferSize>& targetBuffer,
@@ -2044,13 +2063,11 @@ bool drawFileBrowser(const char* id,
             const bool selected = std::strcmp(targetBuffer.data(), entry.path.c_str()) == 0;
             const std::string label = entry.isDirectory ? "[" + entry.name + "]" : entry.name;
             if (ImGui::Selectable(label.c_str(), selected, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick)) {
-                const bool doubleClicked = ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
-                if (entry.isDirectory && doubleClicked) {
-                    refreshFileBrowser(browser, entry.path);
-                } else {
-                    copyToBuffer(targetBuffer, entry.path);
-                    activatedPath = doubleClicked && (!entry.isDirectory || selectDirectories);
-                }
+                activatedPath = activateFileBrowserEntry(browser,
+                                                         entry,
+                                                         targetBuffer,
+                                                         selectDirectories,
+                                                         ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left));
             }
             ImGui::TableSetColumnIndex(1);
             ImGui::TextUnformatted(entry.isDirectory ? "Folder" : "File");
@@ -4423,6 +4440,31 @@ int runSelfTests() {
             browser.entries[1].name != "sample.bin" ||
             browsingDirectoryForPath(browserFilePath.c_str()) != browserDirectory) {
             std::fprintf(stderr, "self-test: file browser scan failed\n");
+            return 1;
+        }
+        std::array<char, kPathBufferSize> browserTarget{};
+        copyToBuffer(browserTarget, browserFilePath);
+        if (activateFileBrowserEntry(browser, browser.entries[0], browserTarget, false, false) ||
+            browser.directory != browserSubdirectory ||
+            std::strcmp(browserTarget.data(), browserFilePath.c_str()) != 0) {
+            std::fprintf(stderr, "self-test: file browser folder click did not navigate\n");
+            return 1;
+        }
+        if (!refreshFileBrowser(browser, browserDirectory)) {
+            std::fprintf(stderr, "self-test: file browser refresh after folder click failed\n");
+            return 1;
+        }
+        browserTarget.fill(0);
+        if (activateFileBrowserEntry(browser, browser.entries[1], browserTarget, false, false) ||
+            std::strcmp(browserTarget.data(), browserFilePath.c_str()) != 0 ||
+            !activateFileBrowserEntry(browser, browser.entries[1], browserTarget, false, true)) {
+            std::fprintf(stderr, "self-test: file browser file activation failed\n");
+            return 1;
+        }
+        browserTarget.fill(0);
+        if (activateFileBrowserEntry(browser, browser.entries[0], browserTarget, true, false) ||
+            std::strcmp(browserTarget.data(), browserSubdirectory.c_str()) != 0) {
+            std::fprintf(stderr, "self-test: file browser directory selection failed\n");
             return 1;
         }
     }
