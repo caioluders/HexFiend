@@ -4746,7 +4746,7 @@ int main(int argc, char** argv) {
     if (!window) {
         std::fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
         SDL_Quit();
-        return 1;
+        return renderSmokeTest ? 77 : 1;
     }
 
     SDL_GLContext glContext = SDL_GL_CreateContext(window);
@@ -4754,7 +4754,7 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "SDL_GL_CreateContext failed: %s\n", SDL_GetError());
         SDL_DestroyWindow(window);
         SDL_Quit();
-        return 1;
+        return renderSmokeTest ? 77 : 1;
     }
     SDL_GL_MakeCurrent(window, glContext);
     SDL_GL_SetSwapInterval(1);
