@@ -38,6 +38,8 @@ constexpr int kWindowWidth = 760;
 constexpr int kWindowHeight = 620;
 constexpr std::size_t kPathBufferSize = 4096;
 constexpr std::size_t kTextBufferSize = 1024;
+constexpr std::uint64_t kMinBytesPerRow = 4;
+constexpr std::uint64_t kMaxBytesPerRow = 128;
 constexpr std::uint64_t kDefaultBytesPerRow = 16;
 constexpr std::uint64_t kDefaultVisibleRows = 64;
 constexpr std::size_t kMaxRecentFiles = 10;
@@ -730,7 +732,7 @@ AppPreferences loadPreferences() {
     preferences.showDataInspector = parseBoolPreference(values, "showDataInspector", preferences.showDataInspector);
     preferences.showStatusBar = parseBoolPreference(values, "showStatusBar", preferences.showStatusBar);
     preferences.showScroller = parseBoolPreference(values, "showScroller", preferences.showScroller);
-    preferences.bytesPerRow = parseUintPreference(values, "bytesPerRow", preferences.bytesPerRow, 4, 64);
+    preferences.bytesPerRow = parseUintPreference(values, "bytesPerRow", preferences.bytesPerRow, kMinBytesPerRow, kMaxBytesPerRow);
     preferences.recentFiles.clear();
     for (std::size_t i = 0; i < kMaxRecentFiles; ++i) {
         auto recent = values.find("recentFile" + std::to_string(i));
@@ -2018,7 +2020,7 @@ bool drawFileBrowser(const char* id,
                      bool selectDirectories) {
     if (!browser.initialized) refreshFileBrowser(browser, browsingDirectoryForPath(targetBuffer.data()));
 
-    bool selectedPath = false;
+    bool activatedPath = false;
     ImGui::PushID(id);
     if (ImGui::Button("Up", ImVec2(70.0f, 0.0f))) {
         refreshFileBrowser(browser, parentDirectory(browser.directory));
@@ -2041,11 +2043,12 @@ bool drawFileBrowser(const char* id,
             const bool selected = std::strcmp(targetBuffer.data(), entry.path.c_str()) == 0;
             const std::string label = entry.isDirectory ? "[" + entry.name + "]" : entry.name;
             if (ImGui::Selectable(label.c_str(), selected, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick)) {
-                if (entry.isDirectory && (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) || !selectDirectories)) {
+                const bool doubleClicked = ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
+                if (entry.isDirectory && (doubleClicked || !selectDirectories)) {
                     refreshFileBrowser(browser, entry.path);
                 } else {
                     copyToBuffer(targetBuffer, entry.path);
-                    selectedPath = true;
+                    activatedPath = doubleClicked;
                 }
             }
             ImGui::TableSetColumnIndex(1);
@@ -2054,7 +2057,7 @@ bool drawFileBrowser(const char* id,
         ImGui::EndTable();
     }
     ImGui::PopID();
-    return selectedPath;
+    return activatedPath;
 }
 
 std::string previewAt(hexfiend::linux_ui::EngineDocument& document,
@@ -3451,6 +3454,36 @@ float hexByteX(float baseX, float byteWidth, float gapWidth, std::size_t index) 
     return baseX + static_cast<float>(index) * (byteWidth + gapWidth) + static_cast<float>(groupCount) * gapWidth;
 }
 
+float editorRowWidth(const ViewState& view,
+                     std::uint64_t bytesPerRow,
+                     float lineNumberWidth,
+                     float hexByteWidth,
+                     float hexGapWidth,
+                     float asciiByteWidth,
+                     float paneGap) {
+    const float hexWidth = view.showHex
+        ? hexByteX(0.0f, hexByteWidth, hexGapWidth, static_cast<std::size_t>(bytesPerRow))
+        : 0.0f;
+    const float asciiWidth = view.showAscii ? static_cast<float>(bytesPerRow) * asciiByteWidth : 0.0f;
+    const float gapWidth = view.showHex && view.showAscii ? paneGap : 0.0f;
+    return lineNumberWidth + hexWidth + gapWidth + asciiWidth;
+}
+
+std::uint64_t bytesPerRowForCanvas(const ViewState& view,
+                                   float canvasWidth,
+                                   float lineNumberWidth,
+                                   float hexByteWidth,
+                                   float hexGapWidth,
+                                   float asciiByteWidth,
+                                   float paneGap) {
+    std::uint64_t best = kMinBytesPerRow;
+    for (std::uint64_t candidate = kMinBytesPerRow; candidate <= kMaxBytesPerRow; ++candidate) {
+        if (editorRowWidth(view, candidate, lineNumberWidth, hexByteWidth, hexGapWidth, asciiByteWidth, paneGap) > canvasWidth) break;
+        best = candidate;
+    }
+    return std::max<std::uint64_t>(kMinBytesPerRow, best);
+}
+
 std::uint64_t hitTestEditorRow(EditorPane pane,
                                float mouseX,
                                float baseX,
@@ -3677,6 +3710,41 @@ void drawFindBanner(hexfiend::linux_ui::EngineDocument& document,
     ImGui::EndChild();
 }
 
+void drawDocumentScroller(hexfiend::linux_ui::EngineDocument& document,
+                          ViewState& view,
+                          float height) {
+    const std::uint64_t totalRows = std::max<std::uint64_t>(1, (document.length() + view.bytesPerRow - 1) / view.bytesPerRow);
+    const std::uint64_t maxLine = totalRows > view.visibleRows ? totalRows - view.visibleRows : 0;
+    std::uint64_t currentLine = maxLine == 0 ? 0 : std::min<std::uint64_t>(view.viewOffset / view.bytesPerRow, maxLine);
+
+    const ImVec2 size(18.0f, height);
+    const ImVec2 origin = ImGui::GetCursorScreenPos();
+    ImGui::InvisibleButton("##document-scroll", size);
+
+    if (maxLine > 0 && ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        const float relativeY = std::clamp((ImGui::GetIO().MousePos.y - origin.y) / std::max(1.0f, height), 0.0f, 1.0f);
+        currentLine = static_cast<std::uint64_t>(std::llround(relativeY * static_cast<double>(maxLine)));
+        view.viewOffset = currentLine * view.bytesPerRow;
+        clampView(document, view);
+    }
+
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    const ImU32 trackColor = ImGui::GetColorU32(ImGuiCol_ScrollbarBg);
+    const ImU32 grabColor = ImGui::GetColorU32(ImGui::IsItemActive() ? ImGuiCol_ScrollbarGrabActive :
+                                               ImGui::IsItemHovered() ? ImGuiCol_ScrollbarGrabHovered :
+                                               ImGuiCol_ScrollbarGrab);
+    drawList->AddRectFilled(origin, ImVec2(origin.x + size.x, origin.y + size.y), trackColor, 6.0f);
+
+    const float visibleFraction = totalRows == 0 ? 1.0f : std::clamp(static_cast<float>(view.visibleRows) / static_cast<float>(totalRows), 0.0f, 1.0f);
+    const float grabHeight = maxLine == 0 ? height : std::clamp(height * visibleFraction, 24.0f, height);
+    const float travel = std::max(0.0f, height - grabHeight);
+    const float position = maxLine == 0 ? 0.0f : travel * (static_cast<float>(currentLine) / static_cast<float>(maxLine));
+    drawList->AddRectFilled(ImVec2(origin.x + 2.0f, origin.y + position),
+                            ImVec2(origin.x + size.x - 2.0f, origin.y + position + grabHeight),
+                            grabColor,
+                            6.0f);
+}
+
 void drawDocumentToolbar(hexfiend::linux_ui::EngineDocument& document,
                          ViewState& view,
                          EditHistory& history,
@@ -3755,6 +3823,13 @@ void drawHexRepresenters(hexfiend::linux_ui::EngineDocument& document,
         ? ImGui::CalcTextSize(std::string(static_cast<std::size_t>(offsetDigits), '0').c_str()).x + glyphWidth * 2.0f
         : 0.0f;
     const float paneGap = 28.0f;
+    const std::uint64_t responsiveBytesPerRow =
+        bytesPerRowForCanvas(view, canvasSize.x, lineNumberWidth, hexByteWidth, hexGapWidth, glyphWidth, paneGap);
+    if (responsiveBytesPerRow != view.bytesPerRow) {
+        view.bytesPerRow = responsiveBytesPerRow;
+        view.viewOffset = (view.viewOffset / view.bytesPerRow) * view.bytesPerRow;
+        clampView(document, view);
+    }
     const float hexBaseX = canvasOrigin.x + lineNumberWidth;
     const float hexWidth = hexByteX(0.0f, hexByteWidth, hexGapWidth, static_cast<std::size_t>(view.bytesPerRow));
     const float asciiBaseX = hexBaseX + (view.showHex ? hexWidth + paneGap : 0.0f);
@@ -3856,13 +3931,7 @@ void drawHexRepresenters(hexfiend::linux_ui::EngineDocument& document,
 
     if (view.showScroller) {
         ImGui::SameLine();
-        std::uint64_t maxLine = std::max<std::uint64_t>(1, document.length() / view.bytesPerRow);
-        std::uint64_t currentLine = view.viewOffset / view.bytesPerRow;
-        std::uint64_t minLine = 0;
-        ImGui::SetNextItemWidth(18.0f);
-        if (ImGui::VSliderScalar("##document-scroll", ImVec2(18.0f, editorHeight), ImGuiDataType_U64, &currentLine, &minLine, &maxLine, "")) {
-            view.viewOffset = currentLine * view.bytesPerRow;
-        }
+        drawDocumentScroller(document, view, editorHeight);
     }
 }
 
@@ -4206,6 +4275,21 @@ int runSelfTests() {
             !memoryRegionMatchesFilter(region, "HEXFIEND") ||
             memoryRegionMatchesFilter(region, "missing")) {
             std::fprintf(stderr, "self-test: process filter matching failed\n");
+            return 1;
+        }
+    }
+    {
+        ViewState responsiveView;
+        responsiveView.showLineNumbers = true;
+        responsiveView.showHex = true;
+        responsiveView.showAscii = true;
+        const std::uint64_t narrowRows = bytesPerRowForCanvas(responsiveView, 320.0f, 48.0f, 16.0f, 8.0f, 8.0f, 28.0f);
+        const std::uint64_t wideRows = bytesPerRowForCanvas(responsiveView, 1280.0f, 48.0f, 16.0f, 8.0f, 8.0f, 28.0f);
+        if (narrowRows < kMinBytesPerRow ||
+            wideRows <= narrowRows ||
+            wideRows > kMaxBytesPerRow ||
+            editorRowWidth(responsiveView, wideRows, 48.0f, 16.0f, 8.0f, 8.0f, 28.0f) > 1280.0f) {
+            std::fprintf(stderr, "self-test: responsive bytes-per-row calculation failed\n");
             return 1;
         }
     }
@@ -5250,8 +5334,8 @@ int main(int argc, char** argv) {
         if (ImGui::BeginPopupModal("Open File", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::SetNextItemWidth(520.0f);
             const bool submitOpen = ImGui::InputText("Path", pathBuffer.data(), pathBuffer.size(), ImGuiInputTextFlags_EnterReturnsTrue);
-            drawFileBrowser("open-file-browser", openFileBrowser, pathBuffer, false);
-            if (submitOpen || ImGui::Button("Open", ImVec2(90.0f, 0.0f))) {
+            const bool pickedOpenPath = drawFileBrowser("open-file-browser", openFileBrowser, pathBuffer, false);
+            if (pickedOpenPath || submitOpen || ImGui::Button("Open", ImVec2(90.0f, 0.0f))) {
                 queueDocumentAction(PendingDocumentAction::OpenPath, pathBuffer.data());
                 ImGui::CloseCurrentPopup();
             }
@@ -5401,7 +5485,7 @@ int main(int argc, char** argv) {
         if (ImGui::BeginPopupModal("Compare with File", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::SetNextItemWidth(520.0f);
             bool submitCompare = ImGui::InputText("Path", comparePathBuffer.data(), comparePathBuffer.size(), ImGuiInputTextFlags_EnterReturnsTrue);
-            drawFileBrowser("compare-file-browser", compareFileBrowser, comparePathBuffer, false);
+            submitCompare |= drawFileBrowser("compare-file-browser", compareFileBrowser, comparePathBuffer, false);
             ImGui::Checkbox("Compare range", &compareUseRange);
             if (compareUseRange) {
                 ImGui::SetNextItemWidth(180.0f);
@@ -5439,7 +5523,7 @@ int main(int argc, char** argv) {
             drawFileBrowser("compare-left-file-browser", compareLeftFileBrowser, compareLeftPathBuffer, false);
             ImGui::SetNextItemWidth(520.0f);
             submitCompareFiles |= ImGui::InputText("Right", comparePathBuffer.data(), comparePathBuffer.size(), ImGuiInputTextFlags_EnterReturnsTrue);
-            drawFileBrowser("compare-right-file-browser", compareRightFileBrowser, comparePathBuffer, false);
+            submitCompareFiles |= drawFileBrowser("compare-right-file-browser", compareRightFileBrowser, comparePathBuffer, false);
             if (submitCompareFiles || ImGui::Button("Compare", ImVec2(90.0f, 0.0f))) {
                 if (openFilesForComparison(document, pathBuffer, compareLeftPathBuffer, comparePathBuffer, view, history, diff, defaultEditMode, status)) {
                     showDiffWindow = true;
