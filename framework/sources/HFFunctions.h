@@ -350,8 +350,9 @@ static inline NSUInteger HFAtomicIncrement(volatile NSUInteger *ptr, BOOL barrie
 #endif
         volatile unsigned long long *: (barrier ? OSAtomicIncrement64Barrier : OSAtomicIncrement64)((volatile int64_t *)ptr));
 #else
-    memory_order order = barrier ? memory_order_seq_cst : memory_order_relaxed;
-    return atomic_fetch_add_explicit((_Atomic NSUInteger *)ptr, 1, order) + 1;
+    int order = barrier ? __ATOMIC_SEQ_CST : __ATOMIC_RELAXED;
+    NSUInteger one = 1;
+    return __atomic_fetch_add(ptr, one, order) + 1;
 #endif
 }
 
@@ -367,8 +368,9 @@ static inline NSUInteger HFAtomicDecrement(volatile NSUInteger *ptr, BOOL barrie
 #endif
         volatile unsigned long long *: (barrier ? OSAtomicDecrement64Barrier : OSAtomicDecrement64)((volatile int64_t *)ptr));
 #else
-    memory_order order = barrier ? memory_order_seq_cst : memory_order_relaxed;
-    return atomic_fetch_sub_explicit((_Atomic NSUInteger *)ptr, 1, order) - 1;
+    int order = barrier ? __ATOMIC_SEQ_CST : __ATOMIC_RELAXED;
+    NSUInteger one = 1;
+    return __atomic_fetch_sub(ptr, one, order) - 1;
 #endif
 }
 
@@ -377,7 +379,7 @@ static inline int64_t HFAtomicAdd64(int64_t a, volatile int64_t *b) {
 #ifdef __APPLE__
     return OSAtomicAdd64(a, b);
 #else
-    return atomic_fetch_add_explicit((_Atomic int64_t *)b, a, memory_order_relaxed) + a;
+    return __atomic_fetch_add(b, a, __ATOMIC_RELAXED) + a;
 #endif
 }
 

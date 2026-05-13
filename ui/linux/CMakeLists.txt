@@ -61,10 +61,13 @@ target_link_libraries(HexFiendLinux PRIVATE
 )
 target_link_directories(HexFiendLinux PRIVATE ${SDL2_LIBRARY_DIRS} ${TCL_LIBRARY_DIRS})
 
+set_target_properties(HexFiendLinux PROPERTIES
+    INSTALL_RPATH "$ORIGIN/lib"
+    BUILD_RPATH_USE_ORIGIN ON
+)
 if(HEXFIEND_GNUSTEP_ROOT)
     set_target_properties(HexFiendLinux PROPERTIES
         BUILD_RPATH "${HEXFIEND_GNUSTEP_ROOT}/usr/lib"
-        INSTALL_RPATH "${HEXFIEND_GNUSTEP_ROOT}/usr/lib"
     )
 endif()
 
@@ -77,6 +80,42 @@ configure_file(
 install(TARGETS HexFiendLinux
     RUNTIME DESTINATION bin
 )
+
+# Bundle shared libraries for a standalone binary.
+# Collects non-system .so dependencies into bin/lib/ so the RPATH $ORIGIN/lib
+# resolves them without requiring system-wide installation.
+set(HEXFIEND_BUNDLED_LIB_PATTERNS
+    libgnustep-base
+    libBlocksRuntime
+    libobjc
+    libicui18n
+    libicuuc
+    libicudata
+)
+install(CODE "
+    file(GET_RUNTIME_DEPENDENCIES
+        EXECUTABLES \$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/HexFiendLinux
+        RESOLVED_DEPENDENCIES_VAR _resolved
+        UNRESOLVED_DEPENDENCIES_VAR _unresolved
+        PRE_EXCLUDE_REGEXES
+            [[^/lib64/]]
+            [[^/usr/lib/(libc|libm|libdl|librt|libpthread|libstdc\\+\\+|libgcc_s|libGL|libGLX|libGLdispatch|libOpenGL|libSDL2|libX|libxcb|libz\\.so|libffi|libdbus|libsystemd|libgnutls|libxslt|libxml2|libavahi|libtcl|libleancrypto|libp11|libidn2|libunistring|libtasn1|libhogweed|libnettle|libgmp|libXau|libXdmcp)]]
+        POST_INCLUDE_REGEXES
+            [[libgnustep-base]]
+            [[libBlocksRuntime]]
+            [[libobjc]]
+            [[libicui18n]]
+            [[libicuuc]]
+            [[libicudata]]
+        POST_EXCLUDE_REGEXES [[.*]]
+    )
+    foreach(_lib \${_resolved})
+        file(INSTALL \${_lib}
+            DESTINATION \$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/lib
+            FOLLOW_SYMLINK_CHAIN
+        )
+    endforeach()
+")
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.hexfiend.HexFiend.desktop
     DESTINATION share/applications
 )

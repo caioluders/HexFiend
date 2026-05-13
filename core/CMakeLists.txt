@@ -53,6 +53,21 @@ if(_hexfiend_core_deps_found)
     )
     if(HEXFIEND_STAGED_OBJC_INCLUDE_DIRS)
         target_include_directories(HexFiendCore PUBLIC ${HEXFIEND_STAGED_OBJC_INCLUDE_DIRS})
+    else()
+        # Clang does not search GCC's internal include paths, so locate the
+        # GCC-shipped objc/ headers when building with clang on Linux.
+        # We symlink only the objc/ subdirectory into a staging area to avoid
+        # pulling in GCC intrinsic headers that are incompatible with clang.
+        file(GLOB _gcc_objc_include_dirs "/usr/lib/gcc/*/*/include")
+        foreach(_dir ${_gcc_objc_include_dirs})
+            if(EXISTS "${_dir}/objc/objc.h")
+                set(_objc_staging "${CMAKE_BINARY_DIR}/_objc_include")
+                file(MAKE_DIRECTORY "${_objc_staging}")
+                file(CREATE_LINK "${_dir}/objc" "${_objc_staging}/objc" SYMBOLIC)
+                target_include_directories(HexFiendCore PUBLIC "${_objc_staging}")
+                break()
+            endif()
+        endforeach()
     endif()
 
     set_source_files_properties(${HEXFIEND_CORE_SOURCES} PROPERTIES COMPILE_OPTIONS "-fblocks")
